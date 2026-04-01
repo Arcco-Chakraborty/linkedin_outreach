@@ -3,14 +3,14 @@ import sys
 from src.email_generator import generate_emails
 from src.email_pattern_detector import get_domain_pattern
 from src.models import EmailResult, Profile
-from src.sheets_writer import SheetsWriter
+from src.sheets_writer import CSVWriter
 from src.smtp_verifier import verify_email, verify_first_valid
 
 
 def run_pipeline(
     profiles: list[Profile],
     context,
-    writer: SheetsWriter,
+    writer: CSVWriter,
 ) -> tuple[int, int, int]:
     """
     Process each profile: pattern detect → generate → SMTP verify → write.

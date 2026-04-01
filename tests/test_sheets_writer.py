@@ -1,6 +1,6 @@
-from unittest.mock import MagicMock
+import csv
 from src.models import Profile, EmailResult
-from src.sheets_writer import SheetsWriter
+from src.sheets_writer import CSVWriter
 
 
 def _result(status="valid", email="jane@acme.example") -> EmailResult:
@@ -13,67 +13,51 @@ def _result(status="valid", email="jane@acme.example") -> EmailResult:
     return EmailResult(profile=p, email=email, status=status)
 
 
-def _make_writer(empty_sheet=True):
-    mock_gc = MagicMock()
-    mock_spreadsheet = MagicMock()
-    mock_gc.open.return_value = mock_spreadsheet
-    mock_verified_ws = MagicMock()
-    mock_rejected_ws = MagicMock()
-    mock_verified_ws.row_values.return_value = [] if empty_sheet else ["Name"]
-    mock_rejected_ws.row_values.return_value = [] if empty_sheet else ["Name"]
-    mock_spreadsheet.worksheet.side_effect = lambda name: {
-        "Verified Leads": mock_verified_ws,
-        "Rejected Leads": mock_rejected_ws,
-    }[name]
-    writer = SheetsWriter(gc=mock_gc, spreadsheet_name="My Leads")
-    return writer, mock_verified_ws, mock_rejected_ws
+def _read_csv(path):
+    with open(path, newline="", encoding="utf-8") as f:
+        return list(csv.reader(f))
 
 
-def test_writer_adds_headers_to_empty_sheet():
-    writer, verified_ws, rejected_ws = _make_writer(empty_sheet=True)
-    verified_ws.append_row.assert_called_once_with(
-        ["Name", "Email", "Title", "Company", "LinkedIn URL"]
-    )
-    rejected_ws.append_row.assert_called_once_with(
-        ["Name", "Title", "Company", "LinkedIn URL", "Reason"]
-    )
+def test_writer_creates_files_with_headers(tmp_path):
+    CSVWriter(output_dir=str(tmp_path))
+    verified = _read_csv(tmp_path / "verified_leads.csv")
+    rejected = _read_csv(tmp_path / "rejected_leads.csv")
+    assert verified[0] == ["Name", "Email", "Title", "Company", "LinkedIn URL"]
+    assert rejected[0] == ["Name", "Title", "Company", "LinkedIn URL", "Reason"]
 
 
-def test_writer_skips_headers_when_already_present():
-    writer, verified_ws, rejected_ws = _make_writer(empty_sheet=False)
-    verified_ws.append_row.assert_not_called()
-    rejected_ws.append_row.assert_not_called()
+def test_writer_skips_headers_when_files_already_exist(tmp_path):
+    CSVWriter(output_dir=str(tmp_path))
+    CSVWriter(output_dir=str(tmp_path))  # second init on same dir
+    verified = _read_csv(tmp_path / "verified_leads.csv")
+    assert verified.count(["Name", "Email", "Title", "Company", "LinkedIn URL"]) == 1
 
 
-def test_write_verified_appends_correct_row():
-    writer, verified_ws, _ = _make_writer(empty_sheet=False)
+def test_write_verified_appends_correct_row(tmp_path):
+    writer = CSVWriter(output_dir=str(tmp_path))
     writer.write_verified(_result(status="valid", email="jane@acme.example"))
-    verified_ws.append_row.assert_called_once_with(
-        ["Jane Smith", "jane@acme.example", "Co-Founder", "Acme Inc",
-         "https://www.linkedin.com/in/jane-smith/"],
-        value_input_option="USER_ENTERED",
-    )
+    rows = _read_csv(tmp_path / "verified_leads.csv")
+    assert rows[1] == ["Jane Smith", "jane@acme.example", "Co-Founder", "Acme Inc",
+                       "https://www.linkedin.com/in/jane-smith/"]
 
 
-def test_write_verified_formats_catch_all_email():
-    writer, verified_ws, _ = _make_writer(empty_sheet=False)
+def test_write_verified_formats_catch_all_email(tmp_path):
+    writer = CSVWriter(output_dir=str(tmp_path))
     writer.write_verified(_result(status="catch-all", email="jane@acme.example"))
-    row = verified_ws.append_row.call_args[0][0]
-    assert row[1] == "⚠ unverified (catch-all): jane@acme.example"
+    rows = _read_csv(tmp_path / "verified_leads.csv")
+    assert rows[1][1] == "⚠ unverified (catch-all): jane@acme.example"
 
 
-def test_write_verified_formats_blocked_email():
-    writer, verified_ws, _ = _make_writer(empty_sheet=False)
+def test_write_verified_formats_blocked_email(tmp_path):
+    writer = CSVWriter(output_dir=str(tmp_path))
     writer.write_verified(_result(status="blocked", email="jane@acme.example"))
-    row = verified_ws.append_row.call_args[0][0]
-    assert row[1] == "⚠ unverified (server blocked): jane@acme.example"
+    rows = _read_csv(tmp_path / "verified_leads.csv")
+    assert rows[1][1] == "⚠ unverified (server blocked): jane@acme.example"
 
 
-def test_write_rejected_appends_correct_row():
-    writer, _, rejected_ws = _make_writer(empty_sheet=False)
+def test_write_rejected_appends_correct_row(tmp_path):
+    writer = CSVWriter(output_dir=str(tmp_path))
     writer.write_rejected(_result(status="invalid", email=None))
-    rejected_ws.append_row.assert_called_once_with(
-        ["Jane Smith", "Co-Founder", "Acme Inc",
-         "https://www.linkedin.com/in/jane-smith/", "invalid"],
-        value_input_option="USER_ENTERED",
-    )
+    rows = _read_csv(tmp_path / "rejected_leads.csv")
+    assert rows[1] == ["Jane Smith", "Co-Founder", "Acme Inc",
+                       "https://www.linkedin.com/in/jane-smith/", "invalid"]
