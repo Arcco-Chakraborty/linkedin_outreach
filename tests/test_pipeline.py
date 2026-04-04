@@ -50,6 +50,17 @@ def test_catch_all_goes_to_write_verified(mocker):
     mock_writer.write_verified.assert_called_once()
 
 
+def test_blocked_email_goes_to_write_rejected(mocker):
+    mocker.patch("src.pipeline.get_domain_pattern", return_value="f.l")
+    mocker.patch("src.pipeline.generate_emails", return_value=["jane.smith@acme.example"])
+    mocker.patch("src.pipeline.verify_email", return_value="blocked")
+    mock_writer = MagicMock()
+
+    v, r, s = run_pipeline([_profile()], context=MagicMock(), writer=mock_writer)
+    assert v == 0 and r == 1 and s == 0
+    mock_writer.write_rejected.assert_called_once()
+
+
 def test_no_pattern_uses_brute_force(mocker):
     mocker.patch("src.pipeline.get_domain_pattern", return_value=None)
     all_8 = [f"p{i}@acme.example" for i in range(8)]
@@ -72,6 +83,16 @@ def test_no_emails_generated_goes_to_rejected(mocker):
     assert r == 1
     result = mock_writer.write_rejected.call_args[0][0]
     assert result.status == "no_pattern"
+
+
+def test_missing_domain_goes_to_rejected(mocker):
+    mock_writer = MagicMock()
+
+    v, r, s = run_pipeline([_profile(domain="")], context=MagicMock(), writer=mock_writer)
+
+    assert v == 0 and r == 1 and s == 0
+    result = mock_writer.write_rejected.call_args[0][0]
+    assert result.status == "no_domain"
 
 
 def test_domain_pattern_cached_across_profiles(mocker):

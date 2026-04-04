@@ -36,8 +36,8 @@ def test_email_result_catch_all_goes_to_verified():
 
 def test_email_result_blocked_goes_to_verified():
     r = EmailResult(profile=_profile(), email="jane@acme.example", status="blocked")
-    assert r.goes_to_verified is True
-    assert r.goes_to_rejected is False
+    assert r.goes_to_verified is False
+    assert r.goes_to_rejected is True
 
 
 def test_email_result_invalid_goes_to_rejected():
@@ -48,5 +48,11 @@ def test_email_result_invalid_goes_to_rejected():
 
 def test_email_result_no_pattern_goes_to_rejected():
     r = EmailResult(profile=_profile(), email=None, status="no_pattern")
+    assert r.goes_to_verified is False
+    assert r.goes_to_rejected is True
+
+
+def test_email_result_no_domain_goes_to_rejected():
+    r = EmailResult(profile=_profile(domain=""), email=None, status="no_domain")
     assert r.goes_to_verified is False
     assert r.goes_to_rejected is True

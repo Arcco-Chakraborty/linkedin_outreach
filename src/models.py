@@ -18,12 +18,12 @@ class Profile:
 class EmailResult:
     profile: Profile
     email: Optional[str]
-    status: str  # "valid" | "invalid" | "catch-all" | "blocked" | "no_pattern"
+    status: str  # "valid" | "invalid" | "catch-all" | "blocked" | "no_pattern" | "no_domain"
 
     @property
     def goes_to_verified(self) -> bool:
-        return self.status in ("valid", "catch-all", "blocked")
+        return self.status in ("valid", "catch-all")
 
     @property
     def goes_to_rejected(self) -> bool:
-        return self.status in ("invalid", "no_pattern")
+        return self.status in ("invalid", "no_pattern", "blocked", "no_domain")

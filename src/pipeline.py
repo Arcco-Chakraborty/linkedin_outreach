@@ -24,6 +24,12 @@ def run_pipeline(
         try:
             domain = profile.company_domain
 
+            if not domain:
+                result = EmailResult(profile=profile, email=None, status="no_domain")
+                writer.write_rejected(result)
+                rejected_count += 1
+                continue
+
             if domain not in pattern_cache:
                 pattern_cache[domain] = get_domain_pattern(context, domain)
             pattern = pattern_cache[domain]

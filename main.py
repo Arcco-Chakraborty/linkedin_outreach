@@ -4,6 +4,8 @@ import sys
 import click
 from dotenv import load_dotenv
 
+from src.runner import run_outreach
+
 load_dotenv()
 
 
@@ -27,36 +29,23 @@ def main(criteria, max_results, output_dir, cookies_file):
     Scrape LinkedIn for people matching CRITERIA, find and verify their emails
     without any paid API tokens, and save results to local CSV files.
     """
-    from src.session import get_authenticated_context
-    from src.scraper import search_people
-    from src.sheets_writer import CSVWriter
-    from src.pipeline import run_pipeline
+    result = run_outreach(
+        criteria=criteria,
+        max_results=max_results,
+        output_dir=output_dir,
+        cookies_file=cookies_file,
+        log=click.echo,
+    )
 
-    click.echo(f"[1/4] Authenticating with LinkedIn (cookies: {cookies_file})...")
-    context = get_authenticated_context(cookies_file)
-
-    click.echo(f"[2/4] Searching LinkedIn for '{criteria}' (max {max_results})...")
-    profiles = search_people(context, criteria=criteria, max_results=max_results)
-    if not profiles:
+    if not result["profiles_found"]:
         click.echo("No profiles found. Check your criteria or LinkedIn session.")
         sys.exit(0)
-    click.echo(f"      Found {len(profiles)} profiles.")
-
-    click.echo(f"[3/4] Preparing output directory: '{output_dir}'...")
-    writer = CSVWriter(output_dir=output_dir)
-
-    click.echo("[4/4] Finding and verifying emails (this may take a few minutes)...")
-    verified, rejected, skipped = run_pipeline(
-        profiles=profiles,
-        context=context,
-        writer=writer,
-    )
 
     click.echo("")
     click.echo("Done.")
-    click.echo(f"  Verified  → {output_dir}/verified_leads.csv  : {verified}")
-    click.echo(f"  Rejected  → {output_dir}/rejected_leads.csv  : {rejected}")
-    click.echo(f"  Skipped   (errors)                           : {skipped}")
+    click.echo(f"  Verified  -> {output_dir}/verified_leads.csv  : {result['verified']}")
+    click.echo(f"  Rejected  -> {output_dir}/rejected_leads.csv  : {result['rejected']}")
+    click.echo(f"  Skipped   (errors)                           : {result['skipped']}")
 
 
 if __name__ == "__main__":
