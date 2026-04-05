@@ -22,8 +22,8 @@ class EmailResult:
 
     @property
     def goes_to_verified(self) -> bool:
-        return self.status in ("valid", "catch-all")
+        return self.status in ("valid", "catch-all", "found")
 
     @property
     def goes_to_rejected(self) -> bool:
-        return self.status in ("invalid", "no_pattern", "blocked", "no_domain")
+        return self.status in ("invalid", "no_pattern", "blocked", "no_domain", "not_found")
