@@ -1,0 +1,27 @@
+# Private local configuration and authentication state
+.env
+.env.*
+!.env.example
+*cookies*.json
+!linkedin_cookies.example.json
+service_account*.json
+credentials*.json
+token*.json
+
+# Generated lead data and run state
+output*/
+data/
+seen_profiles*.txt
+*.csv
+!examples/
+!examples/*.csv
+*.log
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.pyc*
+.pytest_cache/
+pytest_tmp/
+.tmp_work/
